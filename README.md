@@ -13,3 +13,5 @@ MSX версия тут: https://github.com/yumata/lampa
 Затем запускаем команду `npm run start`
 
 Открывам браузер и вводим адрес `http://localhost:3000`
+
+Страница для личного использования [gir2010.github.io](https://gir2010.github.io)

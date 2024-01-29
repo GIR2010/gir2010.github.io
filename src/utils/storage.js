@@ -18,6 +18,8 @@ function init(){
     //sync('timetable','array_object_id') слишком большие данные, что-то потом придумаю
     sync('online_last_balanser','object_string')
     sync('user_clarifys','object_object')
+    sync('torrents_filter_data','object_object')
+    
 }
 
 function get(name, empty){
@@ -121,6 +123,10 @@ function remove(field_name, value){
     if(workers[field_name]) workers[field_name].remove(value)
 }
 
+function clean(field_name,){
+    if(workers[field_name]) workers[field_name].clean()
+}
+
 function clear(full){
     if(full){
         Noty.show(Lang.translate('settings_clear_cache'))
@@ -182,5 +188,6 @@ export default {
     sync,
     remove,
     clear,
+    clean,
     getsize
 }

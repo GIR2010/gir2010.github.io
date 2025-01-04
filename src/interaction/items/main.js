@@ -33,6 +33,8 @@ function component(object){
 
         if(button) empty.append(button)
 
+        empty.addInfoButton()
+
         html.appendChild(empty.render(true))
 
         this.start = empty.start
@@ -69,6 +71,8 @@ function component(object){
         }
         
         scroll.onEnd = this.loadNext.bind(this)
+
+        if(this.onLinesBuild) this.onLinesBuild(data)
 
         data.forEach(this.append.bind(this))
 

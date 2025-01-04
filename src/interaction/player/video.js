@@ -14,6 +14,8 @@ import DeviceInput from '../../utils/device_input'
 import Orsay from './orsay'
 import YouTube from './youtube'
 import TV from './iptv'
+import AD from '../ad/player'
+import Controller from '../controller'
 
 let listener = Subscribe()
 let html
@@ -198,7 +200,7 @@ function bind(){
     })
 
     if(Platform.is('apple') && Storage.field('player') == 'ios'){
-        video.addEventListener('webkitendfullscreen', (e) => { window.history.back() })
+        video.addEventListener('webkitendfullscreen', (e) => { Controller.back() })
     }
 
     // что-то пошло не так
@@ -308,8 +310,10 @@ function bind(){
         loaded()
     })
 
+    let pc = Boolean(Platform.is('nw') || Platform.is('browser') || (Platform.is('apple') && !Utils.isPWA()))
+
     // для страховки
-    video.volume = 1
+    video.volume = pc ? parseFloat(Storage.get('player_volume','1')) : 1
     video.muted  = false
 }
 
@@ -789,6 +793,8 @@ function create(){
 
         video = videobox[0]
 
+        if(typeof video.canPlayType !== 'function') video.canPlayType = ()=>{}
+
         if(Storage.field('player_normalization')){
             try{
                 console.log('Player','normalization enabled')
@@ -1020,6 +1026,8 @@ function load(src){
  * Играем
  */
 function play(){
+    if(AD.launched()) return
+    
     var playPromise;
 
     try{
@@ -1185,8 +1193,11 @@ function speed(value){
 function to(seconds){
     pause()
 
-    if(seconds == -1) video.currentTime = video.duration - 3
-    else video.currentTime = seconds
+    try{
+        if(seconds == -1) video.currentTime = Math.max(0,video.duration - 3)
+        else video.currentTime = seconds
+    }
+    catch(e){}
 
     play()
 }
@@ -1206,6 +1217,12 @@ function exitFromPIP(){
 function togglePictureInPicture(){
     if(document.pictureInPictureElement) exitFromPIP()
     else enterToPIP()
+}
+
+function changeVolume(volume){
+    video.volume = volume
+
+    Storage.set('player_volume',volume)
 }
 
 /**
@@ -1237,19 +1254,29 @@ function destroy(savemeta){
     let dash_destoyed = false
 
     if(hls){
-        hls.destroy()
+        try{
+            hls.destroy()
+        }
+        catch(e){}
+        
         hls = false
 
         hls_destoyed = true
     }
 
     if(hls_parser){
-        hls_parser.destroy()
+        try{
+            hls_parser.destroy()
+        }
+        catch(e){}
         hls_parser = false
     }
 
     if(dash){
-        dash.destroy()
+        try{
+            dash.destroy()
+        }
+        catch(e){}
         dash = false
 
         dash_destoyed = true
@@ -1307,5 +1334,6 @@ export default {
     clearParamas,
     setParams,
     normalizationVisible,
-    togglePictureInPicture
+    togglePictureInPicture,
+    changeVolume
 }

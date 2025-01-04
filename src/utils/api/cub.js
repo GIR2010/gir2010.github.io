@@ -29,7 +29,9 @@ function url(u, params = {}){
         }
     }
 
-    return baseurl + u
+    let email = Storage.get('account','{}').email || ''
+
+    return Utils.addUrlComponent(baseurl + u, 'email=' + encodeURIComponent(email))
 }
 
 function add(u, params){
@@ -63,8 +65,26 @@ function main(params = {}, oncomplite, onerror){
             },call)
         },
         (call)=>{
+            call({
+                results: TimeTable.lately().slice(0,20),
+                title: Lang.translate('title_upcoming_episodes'),
+                nomore: true,
+                cardClass: (_elem, _params)=>{
+                    return new Episode(_elem, _params)
+                }
+            })
+        },
+        (call)=>{
             get('?sort=latest',params,(json)=>{
                 json.title = Lang.translate('title_latest')
+
+                call(json)
+            },call)
+        },
+        (call)=>{
+            get('top/fire/movie',params,(json)=>{
+                json.title = Lang.translate('title_fire')
+                json.line_type = 'top'
 
                 call(json)
             },call)
@@ -84,32 +104,29 @@ function main(params = {}, oncomplite, onerror){
             },call)
         },
         (call)=>{
-            get('movie/now',params,(json)=>{
-                json.title = Lang.translate('menu_movies')
+            get('top/hundred/movie',params,(json)=>{
+                json.title = Lang.translate('title_top_100') + ' - ' + Lang.translate('menu_movies')
+                json.line_type = 'top'
+
+                call(json)
+            },call)
+        },
+        (call)=>{
+            get('top/hundred/tv',params,(json)=>{
+                json.title = Lang.translate('title_top_100') + ' - ' + Lang.translate('menu_tv')
+                json.line_type = 'top'
 
                 call(json)
             },call)
         },
         (call)=>{
             trailers('added',call,call)
-        },
-        (call)=>{
-            get('tv/now',params,(json)=>{
-                json.title = Lang.translate('menu_tv')
-
-                call(json)
-            },call)
-        },
-        (call)=>{
-            get('tv/popular',params,(json)=>{
-                json.title = Lang.translate('title_popular_tv')
-
-                call(json)
-            },call)
-        },
+        }
     ]
 
-    Arrays.insert(parts_data,0,Api.partPersons(parts_data, parts_limit, 'movie'))
+    let start_shuffle = parts_data.length + 1
+
+    Arrays.insert(parts_data,0,Api.partPersons(parts_data, parts_limit, 'movie', start_shuffle))
 
     TMDB.genres.movie.forEach(genre=>{
         let event = (call)=>{
@@ -125,11 +142,9 @@ function main(params = {}, oncomplite, onerror){
 
     network.silent(Utils.protocol() + Manifest.cub_domain + '/api/collections/roll',(data)=>{
         let rolls   = data.results.filter(a=>a.type)
-        let total   = parts_data.length - (parts_limit + 3)
-        let offset  = Math.round(total / rolls.length)
 
         rolls.forEach((collection,index)=>{
-            Arrays.insert(parts_data, index + parts_limit + 3 + (offset * index), (call_inner)=>{
+            let event = (call_inner)=>{
                 get('collections/'+collection.hpu,{},(json)=>{
                     json.title = collection.title
                     json.collection = true
@@ -137,8 +152,12 @@ function main(params = {}, oncomplite, onerror){
     
                     call_inner(json)
                 },call_inner)
-            })
+            }
+
+            parts_data.push(event)
         })
+
+        Arrays.shuffleArrayFromIndex(parts_data, start_shuffle)
     })
 
     function loadPart(partLoaded, partEmpty){
@@ -191,6 +210,11 @@ function category(params = {}, oncomplite, onerror){
             get('?cat='+params.url+'&sort=now_playing'+airdate,params,(json)=>{
                 json.title = Lang.translate('title_now_watch')
 
+                if(params.url == 'tv'){
+                    json.ad    = 'bot'
+                    json.type  = params.url
+                }
+
                 call(json)
             },call)
         },
@@ -242,11 +266,33 @@ function category(params = {}, oncomplite, onerror){
             },call)
         },
         (call)=>{
-            get('?cat='+params.url+'&sort=now',params,(json)=>{
+            get('?cat='+params.url+'&sort=now&airdate=' + (new Date()).getFullYear(),params,(json)=>{
                 json.title = Lang.translate('title_new_this_year')
 
                 call(json)
             },call)
+        },
+        (call)=>{
+            if(params.url == 'anime') call()
+            else{
+                get('top/fire/'+params.url,params,(json)=>{
+                    json.title = Lang.translate('title_fire')
+                    json.line_type = 'top'
+
+                    call(json)
+                },call)
+            }
+        },
+        (call)=>{
+            if(params.url == 'anime') call()
+            else{
+                get('top/hundred/'+params.url,params,(json)=>{
+                    json.title = Lang.translate('title_top_100')
+                    json.line_type = 'top'
+
+                    call(json)
+                },call)
+            }
         },
         (call)=>{
             if(params.url == 'movie' && fullcat) trailers('added',call,call)
@@ -269,13 +315,16 @@ function category(params = {}, oncomplite, onerror){
         (call)=>{
             get('?cat='+params.url+'&sort=top&airdate=' + (new Date().getFullYear() - 7) + '-' + (new Date().getFullYear() - 2) + '&vote=8-10',params,(json)=>{
                 json.title = Lang.translate('title_hight_voite')
+                json.line_type = 'top'
 
                 call(json)
             },call)
         }
     ]
 
-    if(fullcat) Arrays.insert(parts_data,0,Api.partPersons(parts_data, parts_limit + 3, params.url))
+    let start_shuffle = parts_data.length + 1
+
+    if(fullcat) Arrays.insert(parts_data, 0, Api.partPersons(parts_data, parts_limit + 3, params.url, start_shuffle))
 
     if(TMDB.genres[params.url]){
         TMDB.genres[params.url].forEach(genre=>{
@@ -297,11 +346,9 @@ function category(params = {}, oncomplite, onerror){
         if(fullcat){
             network.silent(Utils.protocol() + Manifest.cub_domain + '/api/collections/roll',(data)=>{
                 let rolls   = data.results.filter(a=>a.type == params.url)
-                let total   = parts_data.length - (parts_limit + 5)
-                let offset  = Math.round(total / rolls.length)
 
                 rolls.forEach((collection,index)=>{
-                    Arrays.insert(parts_data, index + parts_limit + 5 + (offset * index), (call_inner)=>{
+                    let event = (call_inner)=>{
                         get('collections/'+collection.hpu,{},(json)=>{
                             json.title = collection.title
                             json.collection = true
@@ -309,7 +356,11 @@ function category(params = {}, oncomplite, onerror){
             
                             call_inner(json)
                         },call_inner)
-                    })
+                    }
+
+                    parts_data.push(event)
+
+                    Arrays.shuffleArrayFromIndex(parts_data, start_shuffle)
                 })
             })
         }
@@ -325,6 +376,8 @@ function category(params = {}, oncomplite, onerror){
             }
 
             parts_data.push(event)
+
+            Arrays.shuffleArrayFromIndex(parts_data, start_shuffle)
         })
     }
      
@@ -344,7 +397,9 @@ function full(params, oncomplite, onerror){
 
     if(Utils.dcma(params.method, params.id)) return onerror()
 
-    get('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords&language='+Storage.field('tmdb_lang'),params,(json)=>{
+    get('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords,alternative_titles&language='+Storage.field('tmdb_lang'),params,(json)=>{
+        if(json.status_code) return status.stop(),onerror()
+
         json.source = 'tmdb'
 
         if(params.method == 'tv'){
@@ -391,6 +446,14 @@ function full(params, oncomplite, onerror){
     reactionsGet(params, (json)=>{
         status.append('reactions', json)
     })
+
+    if(Lang.selected(['ru','uk','be'])){
+        status.need++
+
+        discussGet(params, (json)=>{
+            status.append('discuss', json)
+        },status.error.bind(status))
+    }
 }
 
 function trailers(type, oncomplite){
@@ -415,6 +478,10 @@ function reactionsGet(params, oncomplite){
     network.silent(Utils.protocol() + Manifest.cub_domain + '/api/reactions/get/' + params.method + '_' + params.id, oncomplite,()=>{
         oncomplite({result: []})
     })
+}
+
+function discussGet(params, oncomplite, onerror){
+    network.silent(Utils.protocol() + Manifest.cub_domain + '/api/discuss/get/'+params.method+'_'+params.id+'/' + (params.page || 1) + '/' + Storage.field('language'), oncomplite, onerror)
 }
 
 function reactionsAdd(params, oncomplite, onerror){
@@ -545,5 +612,6 @@ export default {
     menuCategory,
     discovery,
     reactionsGet,
-    reactionsAdd
+    reactionsAdd,
+    discussGet
 }

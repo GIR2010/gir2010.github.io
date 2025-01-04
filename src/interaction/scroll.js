@@ -97,6 +97,8 @@ function create(params = {}){
     }
 
     function scrollTo(scrl){
+        scroll_position = scrl
+
         if(!Platform.screen('tv')){
             let object = {}
 
@@ -117,8 +119,6 @@ function create(params = {}){
                 else animate()
             }
         }
-
-        scroll_position = scrl
     }
 
     function animate(){
@@ -136,6 +136,38 @@ function create(params = {}){
 
         call_update_time = Date.now()
         call_transition_time = Date.now()
+    }
+
+    this.addSwipeDown = function(call){
+        if(window.innerWidth > 480) return
+        
+        let s = 0
+        let t = 0
+
+        html.addEventListener('touchstart',(e)=>{
+            let point = e.touches[0] || e.changedTouches[0]
+
+            if(s == 0){
+                s = point.clientY
+                t = Date.now()
+            }
+        })
+
+        html.addEventListener('touchmove',(e)=>{
+            let point = e.touches[0] || e.changedTouches[0]
+
+            if(s !== 0){
+                if(point.clientY - s > 50 && html.scrollTop == 0 && Date.now() - t < 100){
+                    s = 0
+
+                    call()
+                }
+            }
+        })
+
+        html.addEventListener('touchend',(e)=>{
+            s = 0
+        })
     }
 
     this.wheel = function(size){
@@ -247,7 +279,13 @@ function create(params = {}){
     }
 
     this.reset = function(){
+        body.classList.add('transition-reset')
+
         body.style['-webkit-transform'] = 'translate3d(0px, 0px, 0px)'
+
+        setTimeout(()=>{
+            body.classList.remove('transition-reset')
+        },0)
         
         scroll_position = 0
     }

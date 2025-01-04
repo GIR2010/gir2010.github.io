@@ -37,7 +37,7 @@ function create(data, params = {}){
                 page: 1,
                 genres: params.genres,
                 filter: data.filter,
-                source: params.object.source
+                source: data.source || params.object.source
             })
         }
     }
@@ -118,7 +118,7 @@ function create(data, params = {}){
 
         element.ready = true
 
-        let card = params.cardClass ? params.cardClass(element, params)  : new Card(element, params)
+        let card = params.cardClass ? params.cardClass(element, params) : element.cardClass ? element.cardClass(element, params) : new Card(element, params)
             card.create()
 
             card.onFocus = (target, card_data)=>{
@@ -172,6 +172,8 @@ function create(data, params = {}){
             card.onVisible = ()=>{
                 if(Controller.own(this)) Controller.collectionAppend(card.render(true))
             }
+
+            if(this.onMenu) card.onMenu = this.onMenu
 
             if(params.card_events){
                 for(let i in params.card_events){

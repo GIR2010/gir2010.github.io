@@ -117,6 +117,31 @@ function shuffle(array){
     return array;
 }
 
+function shuffleArrayFromIndex(array, startIndex) {
+    if (startIndex < 0 || startIndex >= array.length) {
+        return
+    }
+
+    for (let i = array.length - 1; i > startIndex; i--) {
+        // Выбираем случайный индекс от startIndex до i
+        const j = Math.floor(Math.random() * (i - startIndex + 1)) + startIndex;
+        // Меняем местами элементы array[i] и array[j]
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+function removeDuplicates(array, key) {
+    let seen = []
+
+    return array.filter(a=>{
+        if(seen.indexOf(a[key]) == -1){
+            seen.push(a[key])
+            return true
+        }
+        else return false
+    })
+}
+
 export default {
     toObject,
     toArray,
@@ -133,5 +158,7 @@ export default {
     empty,
     groupBy,
     removeNoIncludes,
-    shuffle
+    shuffle,
+    shuffleArrayFromIndex,
+    removeDuplicates
 }

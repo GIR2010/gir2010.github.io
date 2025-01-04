@@ -4,6 +4,7 @@ import Templates from './templates'
 import Settings from './settings'
 import Lang from './lang'
 import EPG from './utils/epg'
+import MainChannel from './utils/main_channel'
 
 
 function startPlugin() {
@@ -11,10 +12,25 @@ function startPlugin() {
 
     let manifest = {
         type: 'video',
-        version: '1.2.7',
+        version: '1.2.8',
         name: 'IPTV',
         description: '',
         component: 'iptv',
+        onMain: (data)=>{
+            if(!Lampa.Storage.field('iptv_view_in_main')) return {results: []}
+
+            let playlist = Lampa.Arrays.clone(Lampa.Storage.get('iptv_play_history_main_board','[]')).reverse()
+
+            return {
+                results: playlist,
+                title: Lampa.Lang.translate('title_continue'),
+                nomore: true,
+                line_type: 'iptv',
+                cardClass: (item)=>{
+                    return new MainChannel(item, playlist)
+                }
+            }
+        }
     }
     
     Lampa.Manifest.plugins = manifest
@@ -34,7 +50,7 @@ function startPlugin() {
 
         button.on('hover:enter', function () {
             if(window.lampa_settings.iptv){
-                if(!Lampa.Activity.active().component == 'iptv') return Lampa.Activity.active().activity.component().playlist()
+                if(Lampa.Activity.active().component == 'iptv') return Lampa.Activity.active().activity.component().playlist()
             }
 
             Lampa.Activity.push({

@@ -51,6 +51,17 @@ class Channels{
         this.listener.send('display',this)
     }
 
+    addToHistory(channel){
+        let board = Lampa.Storage.cache('iptv_play_history_main_board',20,[])
+        let find  = board.find(a=>a.url == channel.url)
+
+        if(find) Lampa.Arrays.remove(board, find)
+
+        board.push(channel)
+
+        Lampa.Storage.set('iptv_play_history_main_board',board)
+    }
+
     playArchive(data){
         let convert = (p)=>{
             let item = {
@@ -86,6 +97,9 @@ class Channels{
         if(this.archive && this.archive.channel == start_channel.original){
             data.url = Url.catchupUrl(this.archive.channel.url, this.archive.channel.catchup.type, this.archive.channel.catchup.source)
             data.url = Url.prepareUrl(data.url, this.archive.program)
+        }
+        else{
+            this.addToHistory(Lampa.Arrays.clone(start_channel))
         }
 
         data.locked = Boolean(Locked.find(Locked.format('channel', start_channel.original)))
@@ -385,7 +399,14 @@ class Channels{
         this.listener.send('loading')
 
         Api.playlist(playlist).then(this.build.bind(this)).catch(e=>{
-            this.empty = new Lampa.Empty({descr: '<div style="width: 60%; margin:0 auto; line-height: 1.4">'+Lampa.Lang.translate('iptv_noload_playlist')+'</div>'})
+            let msg = ''
+
+            if(typeof e == 'string') msg = e
+            else if(typeof e.responseJSON !== 'undefined' && e.responseJSON.text)  msg = Lampa.Lang.translate('torrent_error_connect') + ': ' + e.responseJSON.text + (e.responseJSON.code ? ' ['+e.responseJSON.code+']' : '')
+            else if(typeof e.status !== 'undefined')  msg = Lampa.Lang.translate('torrent_error_connect') + ': [' + e.status + ']' + (e.from_error ? ' ['+e.from_error+']' : '')
+            else if(typeof e.message !== 'undefined') msg = e.message
+
+            this.empty = new Lampa.Empty({descr: '<div style="width: 60%; margin:0 auto; line-height: 1.4">'+Lampa.Lang.translate('iptv_noload_playlist') + (msg ? '<br><br>' + msg : '') +'</div>'})
 
             this.listener.send('display',this)
         })

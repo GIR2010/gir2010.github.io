@@ -25,6 +25,11 @@ function init(){
             'inner': '#{settings_param_player_inner}',
             'tizen': 'Tizen',
         },'tizen')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'tizen': 'Tizen',
+        },'tizen')
     }
     if(Platform.is('orsay')){
         select('player',{
@@ -36,6 +41,11 @@ function init(){
             'inner': '#{settings_param_player_inner}',
             'orsay': 'Orsay',
         },'orsay')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'orsay': 'Orsay',
+        },'orsay')
     }
     else if(Platform.is('webos')){
         select('player',{
@@ -44,6 +54,11 @@ function init(){
         },'inner')
 
         select('player_iptv',{
+            'inner': '#{settings_param_player_inner}',
+            'webos': 'WebOS',
+        },'inner')
+
+        select('player_torrent',{
             'inner': '#{settings_param_player_inner}',
             'webos': 'WebOS',
         },'inner')
@@ -59,9 +74,13 @@ function init(){
             'android': 'Android'
         }, 'android')
 
+        select('player_torrent', {
+            'android': 'Android'
+        }, 'android')
+
         trigger('internal_torrclient', false)
     }
-    else if(Platform.desktop()){
+    else if(Platform.desktop() && !Platform.macOS()){
         select('player',{
             'inner': '#{settings_param_player_inner}',
             'other': '#{settings_param_player_outside}',
@@ -70,6 +89,36 @@ function init(){
         select('player_iptv',{
             'inner': '#{settings_param_player_inner}',
             'other': '#{settings_param_player_outside}',
+        },'inner')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'other': '#{settings_param_player_outside}',
+        },'inner')
+    }
+    else if(Platform.macOS()){
+        select('player',{
+            'inner': '#{settings_param_player_inner}',
+            'iina': 'IINA',
+            'infuse': 'Infuse',
+            'mpv': 'MPV',
+            'nplayer': 'nPlayer',
+        },'inner')
+
+        select('player_iptv',{
+            'inner': '#{settings_param_player_inner}',
+            'iina': 'IINA',
+            'infuse': 'Infuse',
+            'mpv': 'MPV',
+            'nplayer': 'nPlayer',
+        },'inner')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'iina': 'IINA',
+            'infuse': 'Infuse',
+            'mpv': 'MPV',
+            'nplayer': 'nPlayer',
         },'inner')
     }
     else if(Platform.is('apple')){
@@ -78,7 +127,8 @@ function init(){
             'ios': 'iOS',
             'vlc': 'VLC',
             'nplayer': 'nPlayer',
-            'infuse': 'Infuse',		
+            'infuse': 'Infuse',
+            'svplayer': 'SVPlayer',
         },'inner')
 
         select('player_iptv',{
@@ -86,7 +136,17 @@ function init(){
             'ios': 'iOS',
             'vlc': 'VLC',
             'nplayer': 'nPlayer',
-            'infuse': 'Infuse',		
+            'infuse': 'Infuse',
+            'svplayer': 'SVPlayer',
+        },'inner')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'ios': 'iOS',
+            'vlc': 'VLC',
+            'nplayer': 'nPlayer',
+            'infuse': 'Infuse',
+            'svplayer': 'SVPlayer',
         },'inner')
     }
     else if(Platform.is('apple_tv')){
@@ -94,6 +154,7 @@ function init(){
             'inner': '#{settings_param_player_inner}',
             'vlc': 'VLC',
             'infuse': 'Infuse',
+            'svplayer': 'SVPlayer',
             'tvos': 'tvOS'
         },'inner')
 
@@ -101,11 +162,21 @@ function init(){
             'inner': '#{settings_param_player_inner}',
             'vlc': 'VLC',
             'infuse': 'Infuse',
-            'tvos': 'tvOS'	
+            'svplayer': 'SVPlayer',
+            'tvos': 'tvOS'
+        },'inner')
+
+        select('player_torrent',{
+            'inner': '#{settings_param_player_inner}',
+            'vlc': 'VLC',
+            'infuse': 'Infuse',
+            'svplayer': 'SVPlayer',
+            'tvos': 'tvOS'
         },'inner')
     }
 
     trigger('glass_style', Platform.screen('mobile'))
+    trigger('advanced_animation', Platform.is('apple_tv') || Platform.is('browser') || Platform.desktop() || navigator.userAgent.toLowerCase().indexOf('shield') >= 0)
 
     let screensaver_types = {
         'nature': '#{settings_param_screensaver_nature}',
@@ -119,7 +190,7 @@ function init(){
     select('keyboard_type', {
         'lampa': '#{settings_param_keyboard_lampa}',
         'integrate': '#{settings_param_keyboard_system}'
-    }, Platform.screen('mobile') || Platform.is('apple_tv') ? 'integrate' : 'lampa')
+    }, Platform.screen('mobile') || Platform.is('apple_tv') || Platform.macOS() ? 'integrate' : 'lampa')
 
 
     //язык и комбинации для поиска
@@ -143,16 +214,17 @@ function init(){
 
     select('tmdb_lang',Lang.codes(),'ru')
 
-    let agent = navigator.userAgent.toLowerCase()
-    let versi = agent.match(/chrome\/(\d+)/)
+    // баг со старыми телеками, неправильно работает Utils.protocol()
+    // let agent = navigator.userAgent.toLowerCase()
+    // let versi = agent.match(/chrome\/(\d+)/)
 
-    versi = versi ? parseInt(versi[1]) : 60
-    versi = isNaN(versi) ? 60 : versi
+    // versi = versi ? parseInt(versi[1]) : 60
+    // versi = isNaN(versi) ? 60 : versi
 
     select('protocol', {
         'http': '#{settings_param_no}',
         'https': '#{settings_param_yes}',
-    },  versi >= 60 ? 'https' : 'http')
+    }, 'https')
 }
 
 /**
@@ -183,7 +255,7 @@ function select(name, select_data, select_default_value){
 
 /**
  * Биндит события на элемент
- * @param {object} elems 
+ * @param {object} elems
  */
 function bind(elems, elems_html){
     elems.on('hover:enter',(event)=>{
@@ -292,8 +364,8 @@ function bind(elems, elems_html){
 
 /**
  * Добавить дополнительное полу
- * @param {object} elem 
- * @param {object} element 
+ * @param {object} elem
+ * @param {object} element
  */
 function displayAddItem(elem, element){
     let name  = elem.data('name')
@@ -314,7 +386,7 @@ function displayAddItem(elem, element){
 
 /**
  * Вывести дополнительные поля
- * @param {object} elem 
+ * @param {object} elem
  */
 function displayAddList(elem){
     let list = Storage.get(elem.data('name'),'[]')
@@ -328,7 +400,7 @@ function displayAddList(elem){
 
 /**
  * Обновляет значения на элементе
- * @param {object} elem 
+ * @param {object} elem
  */
 function update(elem,elems,elems_html){
     let name = elem.data('name')
@@ -352,13 +424,17 @@ function update(elem,elems,elems_html){
 
         parent.toggleClass('hide',visibl)
 
+        parent.filter('[data-visible-value]').each(function(){
+            $(this).toggleClass('hide', $(this).data('visible-value') !== key)
+        })
+
         listener.send('update_scroll_position')
     }
 }
 
 /**
  * Получить значение параметра
- * @param {string} name 
+ * @param {string} name
  * @returns *
  */
 function field(name){
@@ -383,6 +459,8 @@ select('poster_size',{
 
 select('parser_torrent_type',{
     'jackett': 'Jackett',
+    'prowlarr': 'Prowlarr',
+    'torrserver': 'TorrServer'
 },'jackett')
 
 select('jackett_interview',{
@@ -415,6 +493,10 @@ select('player',{
 
 select('player_iptv',{
     'inner': '#{settings_param_player_inner}'
+},'inner')
+
+select('player_torrent',{
+    'inner': '#{settings_param_player_inner}',
 },'inner')
 
 select('torrserver_use_link',{
@@ -484,7 +566,7 @@ select('start_page', {
     'favorite@history': '#{title_history}',
     'mytorrents': '#{title_mytorrents}',
     'last': '#{title_last}'
-}, 'last')
+}, 'main')
 
 select('scroll_type', {
     'css': 'CSS',
@@ -517,6 +599,13 @@ select('glass_opacity', {
     'blacked': '#{settings_param_glass_blacked}'
 }, 'easy')
 
+select('interface_sound_level', {
+    '100': '100',
+    '80': '80',
+    '60': '60',
+    '40': '40',
+    '20': '20',
+}, '60')
 
 select('time_offset', {
     'n-10': '-10',
@@ -592,6 +681,7 @@ trigger('hide_outside_the_screen', true)
 trigger('card_interfice_cover', true)
 trigger('card_interfice_reactions', true)
 trigger('cache_images', false)
+trigger('interface_sound_play', false)
 
 
 
@@ -600,6 +690,8 @@ trigger('cache_images', false)
  */
 select('jackett_url','','')
 select('jackett_key','','')
+select('prowlarr_url','','');
+select('prowlarr_key','','');
 select('torrserver_url','','')
 select('torrserver_url_two','','')
 select('torrserver_login','','')

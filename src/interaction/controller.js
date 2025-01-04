@@ -8,6 +8,7 @@ import Platform from '../utils/platform'
 import Noty from './noty'
 import Keypad from './keypad'
 import DeviceInput from '../utils/device_input'
+import Sound from '../utils/sound'
 
 let listener = Subscribe()
 
@@ -37,6 +38,16 @@ function observe(){
         childList: true,
         subtree: true
     })
+}
+
+function animateTriggerEnter(elem){
+    if(Storage.field('advanced_animation')){
+        elem.addClass('animate-trigger-enter')
+
+        setTimeout(()=>{
+            elem.removeClass('animate-trigger-enter')
+        },500)
+    }
 }
 
 /**
@@ -77,7 +88,11 @@ function move(direction){
  */
 function enter(){
     if(active && active.enter) run('enter')
-	else if(select_active) Utils.trigger(select_active, 'hover:enter')
+	else if(select_active){
+        animateTriggerEnter(select_active)
+
+        Utils.trigger(select_active, 'hover:enter')
+    }
 }
 
 /**
@@ -167,10 +182,14 @@ function bindEvents(elem){
             Utils.trigger(elem, 'hover:touch')
         }
 
+        let rightClick = (e)=>{
+            Utils.trigger(elem, 'hover:long')
+        }
+
         elem.trigger_click = (e)=>{
             if(Storage.field('navigation_type') == 'mouse' || Platform.screen('mobile')){
                 if(DeviceInput.canClick(e)){
-                    //Noty.show('click: ' + e.pointerType)
+                    animateTriggerEnter(elem)
 
                     Utils.trigger(elem, 'hover:enter')
                 }
@@ -199,6 +218,7 @@ function bindEvents(elem){
             elem.addEventListener('mouseout', longClear)
             elem.addEventListener('mouseup', longClear)
             elem.addEventListener('mousedown', longStart)
+            elem.addEventListener('contextmenu', rightClick)
         }
 
         if(Utils.isTouchDevice()){

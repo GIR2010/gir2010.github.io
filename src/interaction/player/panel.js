@@ -11,6 +11,7 @@ import Utils from '../../utils/math'
 import DeviceInput from '../../utils/device_input'
 import Video from './video'
 import TV from './iptv'
+import Footer from './footer'
 
 let html
 let listener = Subscribe()
@@ -157,9 +158,11 @@ function init(){
 
     html.find('.player-panel__settings').on('hover:enter',settings)
 
+    html.find('.player-panel__pip,.player-panel__volume').toggleClass('hide',!Boolean(Platform.is('nw') || Platform.is('browser') || (Platform.is('apple') && !Utils.isPWA())))
+
     html.find('.player-panel__pip').on('hover:enter',()=>{
         listener.send('pip',{})
-    }).toggleClass('hide',!Boolean(Platform.is('nw') || Platform.is('browser') || (Platform.is('apple') && !Utils.isPWA())))
+    })
 
     elems.timeline.attr('data-controller', 'player_rewind')
 
@@ -172,6 +175,14 @@ function init(){
     }).on('click',(e)=>{
         if(DeviceInput.canClick(e.originalEvent) && !Platform.screen('mobile')) listener.send('mouse_rewind',{method: 'click',time: elems.time, percent: percent(e)})
     })
+
+    if(!html.find('.player-panel__volume').hasClass('hide')){
+        html.find('.player-panel__volume-range').val(Storage.get('player_volume','1')).on('input',function(){
+            listener.send('change_volume',{volume: $(this).val()})
+
+            Video.changeVolume($(this).val())
+        })
+    }
 
     let touch
 
@@ -363,6 +374,16 @@ function init(){
 
     TV.listener.follow('channel', channel)
     TV.listener.follow('draw-program', program)
+
+    Footer.listener.follow('open',()=>{
+        html.addClass('panel--footer-open')
+    })
+
+    Footer.listener.follow('close',()=>{
+        html.removeClass('panel--footer-open')
+
+        Controller.toggle('player_panel')
+    })
 }
 
 function hideRewind(){
@@ -579,6 +600,11 @@ function selectNormalizationStep(type, def){
     let select  = Storage.get('player_normalization_'+type, def)
 
     let items = [
+        {
+            title: Lang.translate('player_normalization_step_none'),
+            value: 'none',
+            selected: select == 'none'
+        },
         {
             title: Lang.translate('player_normalization_step_low'),
             value: 'low',
@@ -872,7 +898,7 @@ function normalName(name){
             Navigator.move('left')
         },
         down: ()=>{
-            listener.send('playlist',{})
+            Footer.available() ? Controller.toggle('player_footer') : listener.send('playlist',{})
         },
         gone: ()=>{
             html.find('.selector').removeClass('focus')

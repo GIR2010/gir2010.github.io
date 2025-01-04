@@ -7,9 +7,14 @@ let Cache = new DB('cache',[
     'images',
     'themes',
     'other',
-    'timetable'
-],5)
+    'timetable',
+    'cards'
+],6)
 
-Cache.openDatabase()
+Cache.openDatabase().then(()=>{
+    console.log('Cache', 'worked')
+}).catch(()=>{
+    console.log('Cache', 'error', 'no open database')
+})
 
 export default Cache

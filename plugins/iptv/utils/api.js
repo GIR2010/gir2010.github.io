@@ -1,17 +1,18 @@
 import DB from './db'
 import Params from './params'
+import M3u8 from './m3u8'
 
 class Api{
     static network = new Lampa.Reguest()
     static api_url = Lampa.Utils.protocol() + Lampa.Manifest.cub_domain + '/api/iptv/'
 
-    static get(method){
+    static get(method, catch_error){
         return new Promise((resolve, reject)=>{
             let account = Lampa.Storage.get('account','{}')
 
-            if(!account.token) return reject()
+            if(!account.token) return catch_error ? reject(Lang.translate('account_login_failed')): resolve()
 
-            this.network.silent(this.api_url + method,resolve,reject,false,{
+            this.network.silent(this.api_url + method, resolve, catch_error ? reject : resolve, false, {
                 headers: {
                     token: account.token,
                     profile: account.profile.id
@@ -30,43 +31,54 @@ class Api{
         return new Promise((resolve, reject)=>{
             let account = Lampa.Storage.get('account','{}')
 
-            if(!account.token) return reject()
+            if(!account.token) return reject(Lampa.Lang.translate('account_login_failed'))
 
             this.network.timeout(20000)
 
-            this.network.silent(url,(str)=>{
-                let file = new File([str], "playlist.m3u", {
-                    type: "text/plain",
-                })
+            this.network.native(url,(str)=>{
+                try{
+                    let file = new File([str], "playlist.m3u", {
+                        type: "text/plain",
+                    })
 
-                let formData = new FormData($('<form></form>')[0])
-                    formData.append("file", file, "playlist.m3u")
+                    let formData = new FormData($('<form></form>')[0])
+                        formData.append("file", file, "playlist.m3u")
 
-                $.ajax({
-                    url: this.api_url + 'lampa',
-                    type: 'POST',
-                    data: formData,
-                    async: true,
-                    cache: false,
-                    contentType: false,
-                    timeout: 20000,
-                    enctype: 'multipart/form-data',
-                    processData: false,
-                    headers: {
-                        token: account.token,
-                        profile: account.profile.id
-                    },
-                    success: function (j) {
-                        if(j.secuses) resolve(j)
-                        else reject()
-                    },
-                    error: reject
-                })
-            },reject,false,{
-                headers: {
-                    token: account.token,
-                    profile: account.profile.id
-                },
+                    $.ajax({
+                        url: this.api_url + 'lampa',
+                        type: 'POST',
+                        data: formData,
+                        async: true,
+                        cache: false,
+                        contentType: false,
+                        timeout: 20000,
+                        enctype: 'multipart/form-data',
+                        processData: false,
+                        headers: {
+                            token: account.token,
+                            profile: account.profile.id
+                        },
+                        success: function (j) {
+                            if(j.secuses) resolve(j)
+                            else reject(Lampa.Lang.translate('account_export_fail_600') + ' (' + (j.text || j.message) + ')')
+                        },
+                        error: (e)=>{
+                            e.from_error = 'M3U Function (Failed upload to CUB)'
+
+                            reject(e)
+                        }
+                    })
+                }
+                catch(e){
+                    e.from_error = 'M3U Function'
+
+                    reject(e)
+                }
+            },(e)=>{
+                e.from_error = 'M3U Function (Failed to download file)'
+                
+                reject(e)
+            },false,{
                 dataType: 'text'
             })
         })
@@ -74,14 +86,124 @@ class Api{
 
     static list(){
         return new Promise((resolve, reject)=>{
-            this.get('list').then(result=>{
-                DB.rewriteData('playlist','list',result)
+            Promise.all([
+                this.get('list'),
+                DB.getDataAnyCase('playlist','list')
+            ]).then(result=>{
+                if(result[0]) DB.rewriteData('playlist','list',result[0])
 
-                resolve(result)
-            }).catch((e)=>{
-                DB.getData('playlist','list').then((result)=>{
-                    result ? resolve(result) : reject()
-                }).catch(reject)
+                let playlist = result[0] || result[1] || {list: []}
+
+                playlist.list = playlist.list.concat(Lampa.Storage.get('iptv_playlist_custom','[]'))
+
+                resolve(playlist)
+            }).catch(reject)
+        })
+    }
+
+    static m3uClient(url){
+        return new Promise((resolve, reject)=>{
+            this.network.timeout(20000)
+
+            this.network[window.god_enabled ? 'native' : 'silent'](url,(str)=>{
+                if (typeof str != 'string' || str.substr(0, 7).toUpperCase() !== "#EXTM3U") {
+					return reject(Lampa.Lang.translate('torrent_parser_request_error') + ' [M3UClient Function (The file is not M3U)]')
+				}
+
+                let list
+                let catchup
+
+                try{
+                    str = str.replace(/tvg-rec="(\d+)"/g, 'catchup="default" catchup-days="$1"')
+                    
+                    list = M3u8.parse(str)
+                }
+                catch(e){}
+
+                if(list && list.items){
+                    let channels = []
+        
+                    if(list.header.raw.indexOf('catchup') >= 0){
+                        catchup = {
+                            days: 0,
+                            source: '',
+                            type: ''
+                        }
+        
+                        let m_days   = list.header.raw.match(/catchup-days="(\d+)"/)
+                        let m_type   = list.header.raw.match(/catchup="([a-z]+)"/)
+                        let m_source = list.header.raw.match(/catchup-source="(.*?)"/)
+        
+                        if(m_days)   catchup.days   = m_days[1]
+                        if(m_type)   catchup.type   = m_type[1]
+                        if(m_source) catchup.source = m_source[1]
+                    }
+        
+                    for(let i = 0; i < list.items.length; i++){
+                        let item   = list.items[i]
+                        let name   = item.name.trim()
+
+          
+                        let channel = {
+                            id: item.tvg && item.tvg.id ? item.tvg.id : null,
+                            name: name.replace(/ \((\+\d+)\)/g,' $1').replace(/\s+(\s|ⓢ|ⓖ|ⓥ|ⓞ|Ⓢ|Ⓖ|Ⓥ|Ⓞ)/g, ' ').trim(),
+                            logo: item.tvg && item.tvg.logo && item.tvg.logo.indexOf('http') == 0 ? item.tvg.logo : null,
+                            group: item.group.title,
+                            url: item.url,
+                            catchup: item.catchup,
+                            timeshift: item.timeshift,
+                            tvg: item.tvg
+                        }
+        
+                        if(!item.catchup.type && catchup && item.raw.indexOf('catchup-enable="1"') >= 0){
+                            channel.catchup = catchup
+                        }
+        
+                        channels.push(channel)
+                    }
+        
+                    let result = {
+                        menu: [],
+                        channels: channels,
+                    }
+        
+                    result.menu.push({
+                        name: '',
+                        count: channels.length,
+                    })
+        
+                    for(let i = 0; i < channels.length; i++){
+                        let channel = channels[i]
+                        let group = channel.group
+        
+                        let find = result.menu.find(item => item.name === group)
+        
+                        if(find){
+                            find.count++
+                        }
+                        else{
+                            result.menu.push({
+                                name: group,
+                                count: 1,
+                            })
+                        }
+                    }
+        
+                    resolve({
+                        name: '',
+                        playlist: result,
+                        secuses: true
+                    })
+                }
+                else{
+                    reject(Lampa.Lang.translate('torrent_parser_empty') + ' [M3UClient Function (Parsing m3u failed)]')
+                }
+            },(e)=>{
+                e.from_error = 'M3UClient Function (Failed to load)'
+
+                reject(e)
+            },false,{
+                dataType: 'text'
             })
         })
     }
@@ -118,19 +240,23 @@ class Api{
                     })
                 }
 
-                let error = ()=>{
-                    playlist ? resolve(playlist) : reject()
+                let error = (e)=>{
+                    playlist ? resolve(playlist) : reject(e)
                 }
 
-                if(params && params.loading == 'lampa'){
-                    this.m3u(data.url).then(secuses).catch(error)
+                if(params && params.loading == 'lampa' || data.custom){
+                    this[Lampa.Account.logged() ? 'm3u' : 'm3uClient'](data.url).then(secuses).catch(error)
                 }
                 else{
-                    this.get('playlist/' + id).then(secuses).catch(()=>{
+                    this.get('playlist/' + id, true).then(secuses).catch(()=>{
                         this.m3u(data.url).then(secuses).catch(error)
                     })
                 }
-            }).catch(reject)
+            }).catch((e)=>{
+                e.from_error = 'Playlist Function (Something went wrong)'
+
+                reject(e)
+            })
         })
     }
 

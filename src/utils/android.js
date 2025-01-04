@@ -14,6 +14,7 @@ function playHash(SERVER){
             intentExtra = {
                 title: "[LAMPA] " + (SERVER.movie.title || 'No title').replace(/\s+/g, ' ').trim(),
                 poster: SERVER.movie.img,
+                media: SERVER.movie.name ? 'tv' : 'movie',
                 data: {
                     lampa: true,
                     movie: SERVER.movie
@@ -32,6 +33,7 @@ function openTorrent(SERVER){
         let intentExtra = {
             title: "[LAMPA] " + (SERVER.movie.title || 'No title').replace(/\s+/g, ' ').trim(),
             poster: SERVER.object.poster,
+            media: SERVER.movie.name ? 'tv' : 'movie',
             data: {
                 lampa: true,
                 movie: SERVER.movie
@@ -46,16 +48,27 @@ function openTorrent(SERVER){
 }
 
 function openPlayer(link, data){
+    let updateTimeline = function(elem){
+        if(elem.timeline){
+            let new_timeline = Lampa.Timeline.view(elem.timeline.hash)
+
+            elem.timeline.time     = Math.round(new_timeline.time)
+            elem.timeline.duration = Math.round(new_timeline.duration)
+            elem.timeline.percent  = new_timeline.percent
+
+            timeCallback[elem.timeline.hash] = elem
+        }
+    }
+
     if(checkVersion(98, true)){
         if(data.timeline) {
-            data.timeline.time     = Math.round(data.timeline.time)
-            data.timeline.duration = Math.round(data.timeline.duration)
+            updateTimeline(data)
+        }
 
-            // Lampa.Noty.show('time: ' + data.timeline.time)
-
-            // console.log('Timecode', data.timeline)
-
-            timeCallback[data.timeline.hash] = data
+        if(data.playlist){
+            data.playlist.forEach(elem => {
+                updateTimeline(elem)
+            })
         }
     }
     if(checkVersion(10)) AndroidJS.openPlayer(link, JSON.stringify(data))
@@ -73,25 +86,27 @@ function resetDefaultPlayer(){
 
 function httpReq(data, call){
     let index = Math.floor(Math.random() * 5000)
-    reqCallback[index] = call
+    reqCallback[index] = {data, call}
     if(checkVersion(16)) AndroidJS.httpReq(JSON.stringify(data), index)
     else call.error({responseText: "No Native request"})
 }
 
 function httpCall(index, callback){
     let req = reqCallback[index]
-    if(req[callback]){
+    
+    if(req && req.call[callback]){
         let resp = AndroidJS.getResp(index)
-        try {
-            let json = JSON.parse(resp)
-            req[callback](json)
-        } catch {
-            req[callback](resp)
-        } finally {
-            delete reqCallback[index]
+
+        if(!req.data.dataType || req.data.dataType && req.data.dataType.toLowerCase() == 'json' || callback === 'error'){
+            try {
+                resp = JSON.parse(resp)
+            } 
+            catch (e) {}
         }
-    } else {
-        //console.log("Android", "Req index not found")
+
+        delete reqCallback[index]
+
+        req.call[callback](resp)
     }
 }
 

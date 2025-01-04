@@ -10,10 +10,15 @@ import Base64 from './base64'
 import Request from './reguest'
 import Cache from './cache'
 import Manifest from './manifest'
+import Status from './status'
+import ParentalControl from '../interaction/parental_control'
 
 let _created = []
 let _loaded  = []
 let _network = new Request()
+let _blacklist = []
+let _delay_send = []
+let _delay_timer
 
 /**
  * Запуск
@@ -22,7 +27,9 @@ function init(){
     _loaded = Storage.get('plugins','[]')
 
     Settings.main().render().find('[data-component="plugins"]').unbind('hover:enter').on('hover:enter',()=>{
-        Extensions.show()
+        ParentalControl.personal('extensions',()=>{
+            Extensions.show()
+        }, false, true)
     })
 }
 
@@ -68,6 +75,8 @@ function push(plug){
     let find = _created.find(a=>a == plug.url)
 
     if(!find && plug.status == 1){
+        if(_blacklist.find(a=>plug.url.indexOf(a) >= 0)) return Noty.show(Lang.translate('torrent_error_connect'),{time: 8000})
+
         _created.push(plug.url)
 
         console.log('Plugins','push:', plug)
@@ -90,7 +99,9 @@ function save(){
 
 function updatePluginDB(name, url){
     if(Account.hasPremium()){
-        _network.native(url,(str)=>{
+        let cu = Utils.addUrlComponent(url, 'cache=true')
+
+        _network.native(cu,(str)=>{
             Cache.rewriteData('plugins', name, str).then(()=>{
                 console.log('Plugins','update plugin cache:', name)
             }).catch((e)=>{
@@ -143,6 +154,7 @@ function addPluginParams(url){
 
         encode = Utils.addUrlComponent(encode, 'logged='+encodeURIComponent(Account.logged() ? 'true' : 'false'))
         encode = Utils.addUrlComponent(encode, 'reset='+Math.random())
+        encode = Utils.addUrlComponent(encode, 'origin='+encodeURIComponent(Base64.encode(window.location.host)))
 
         encode = Utils.rewriteIfHTTPS(encode)
     }
@@ -151,10 +163,43 @@ function addPluginParams(url){
 }
 
 function loadBlackList(call){
-    _network.silent('./plugins_black_list.json',(list)=>{
-        call(list)
+    let status = new Status(2)
+        status.onComplite = (res)=>{
+            call([].concat(res.cub, res.custom))
+        }
+
+    _network.silent(Utils.protocol() + Manifest.cub_domain + '/api/plugins/blacklist',(result)=>{
+        let list = result.map(a=>a.url)
+
+        Storage.set('plugins_blacklist', list)
+
+        status.append('cub', list)
     },()=>{
-        call([])
+        status.append('cub', Storage.get('plugins_blacklist','[]'))
+    })
+
+    _network.silent('./plugins_black_list.json',(list)=>{
+        status.append('custom', list)
+    },()=>{
+        status.append('custom', [])
+    })
+}
+
+function analysisPlugins(url){
+    _network.native(url,(str)=>{
+        if(/function|lampa|window/ig.test(str)){
+            _delay_send.push(url)
+
+            clearTimeout(_delay_timer)
+
+            _delay_timer = setTimeout(()=>{
+                _network.silent(Utils.protocol() + Manifest.cub_domain + '/api/plugins/analysis',false,false,{
+                    list: JSON.stringify(_delay_send)
+                })
+            },10000)
+        }
+    },false,false,{
+        dataType: 'text'
     })
 }
 
@@ -182,11 +227,21 @@ function load(call){
             black_list.push('lipp.xyz')
             black_list.push('llpp.xyz')
             black_list.push('scabrum.github.io')
+            black_list.push('bylampa.github.io')
+            black_list.push('tinyurl.com')
+
+            // Stupid people :(
+            black_list.push('t.me/')
+            black_list.push('4pda.')
+            black_list.push('teletype.in')
+            black_list.push('yotube.com')
+            
+            _blacklist = black_list
 
             console.log('Plugins','black list:', black_list)
 
             black_list.forEach(b=>{
-                puts = puts.filter(p=>p.indexOf(b) == -1)
+                puts = puts.filter(p=>p.toLowerCase().indexOf(b) == -1)
             })
 
             console.log('Plugins','clear list:', puts)
@@ -225,6 +280,8 @@ function load(call){
                 _created.push(original[u])
 
                 updatePluginDB(original[u], u)
+
+                //analysisPlugins(original[u])
             },false)
         })
 

@@ -12,10 +12,36 @@ import Account from '../utils/account'
 import Lang from '../utils/lang'
 import DeviceInput from '../utils/device_input'
 import Processing from '../interaction/processing'
+import ParentalControl from '../interaction/parental_control'
 
 let html
 let last
 let activi = false
+
+function observe(){
+    if(typeof MutationObserver == 'undefined') return
+
+    let observer = new MutationObserver((mutations)=>{
+        for(let i = 0; i < mutations.length; i++){
+            let mutation = mutations[i]
+
+            if(mutation.type == 'childList' && !mutation.removedNodes.length){
+                let selectors = Array.from(mutation.target.querySelectorAll('.selector'))
+
+                selectors.forEach(s=>{
+                    $(s).unbind('hover:focus hover:hover hover:touch').on('hover:focus hover:hover hover:touch',(e)=>{
+                        last = e.target
+                    })
+                })
+            }
+        }
+    })
+
+    observer.observe(html[0], {
+        childList: true,
+        subtree: true
+    })
+}
 
 function init(){
     html = Template.get('head')
@@ -24,12 +50,16 @@ function init(){
 
     Utils.time(html)
 
-    html.find('.selector').data('controller','head').on('hover:focus',(event)=>{
+    html.find('.selector').data('controller','head').on('hover:focus hover:hover hover:touch',(event)=>{
         last = event.target
     })
 
+    observe()
+
     html.find('.open--settings').on('hover:enter',()=>{
-        Controller.toggle('settings')
+        ParentalControl.personal('settings',()=>{
+            Controller.toggle('settings')
+        }, false, true)
     })
 
     html.find('.open--notice').on('hover:enter',Notice.open.bind(Notice))

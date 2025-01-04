@@ -10,6 +10,7 @@ import Filter from '../interaction/content_filter'
 import Lang from '../utils/lang'
 import Platform from '../utils/platform'
 import DeviceInput from '../utils/device_input'
+import ParentalControl from '../interaction/parental_control'
 
 let html
 let last
@@ -327,6 +328,13 @@ function ready(){
             })
         }
 
+        if(prepared(action,['myperson'])){
+            Activity.push({
+                title: Lang.translate('title_persons'),
+                component: 'myperson'
+            })
+        }
+
         if(action == 'search')   Controller.toggle('search')
         if(action == 'settings') Controller.toggle('settings')
         if(action == 'about'){
@@ -356,13 +364,15 @@ function ready(){
         }
 
         if(action == 'favorite'){
-            Activity.push({
-                url: '',
-                title: Lang.translate(type == 'book' ? 'settings_input_links' : 'title_history'),
-                component: type == 'history' ? 'favorite' : 'bookmarks',
-                type: type,
-                page: 1
-            })
+            ParentalControl.personal('bookmarks',()=>{
+                Activity.push({
+                    url: '',
+                    title: Lang.translate(type == 'book' ? 'settings_input_links' : 'title_history'),
+                    component: type == 'history' ? 'favorite' : 'bookmarks',
+                    type: type,
+                    page: 1
+                })
+            }, false, true)
         }
 
         if(action == 'subscribes'){

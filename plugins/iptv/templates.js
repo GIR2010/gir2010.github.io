@@ -79,6 +79,14 @@ function init(){
         </div>
     `)
 
+    Lampa.Template.add('cub_iptv_list_add_custom', `
+        <div class="iptv-playlist-item selector layer--visible">
+            <div class="iptv-playlist-item__title">
+                
+            </div>
+        </div>
+    `)
+
     Lampa.Template.add('cub_iptv_list', `
         <div class="iptv-list layer--wheight">
             <div class="iptv-list__ico">
@@ -168,6 +176,14 @@ function init(){
         </div>
     `)
 
+    Lampa.Template.add('cub_iptv_channel_main_board',`
+        <div class="iptv-channel iptv-channel--main selector layer--visible layer--render">
+            <div class="iptv-channel__body">
+                <img class="iptv-channel__ico">
+            </div>
+        </div>
+    `)
+
     Lampa.Template.add('settings_iptv_guide',`<div>
         <div class="settings-param selector" data-type="toggle" data-name="iptv_guide_custom" data-children="use_custom_guide">
             <div class="settings-param__name">#{iptv_param_guide_custom_title}</div>
@@ -226,7 +242,7 @@ function init(){
                     </div>
         
                     <div class="hide platform_android">
-                        <small>#{about_version} Android</small><br>
+                        <small>#{about_version} Android APK</small><br>
                         <span class="version_android"></span>
                     </div>
                 </div>

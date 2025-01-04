@@ -90,6 +90,11 @@ import Speedtest from './interaction/speedtest'
 import VPN from './utils/vpn'
 import Processing from './interaction/processing'
 import ParentalControl from './interaction/parental_control'
+import Personal from './utils/personal'
+import Sound from './utils/sound'
+import AppStatus from './interaction/status'
+import Iptv from './utils/iptv'
+import Bell from './interaction/bell'
 
 /**
  * Настройки движка
@@ -118,7 +123,11 @@ Arrays.extend(window.lampa_settings,{
 
     read_only: false,
 
-    dcma: false
+    dcma: false,
+
+    push_state: true,
+
+    iptv: false
 })
 
 /**
@@ -132,90 +141,101 @@ if(window.localStorage.getItem('remove_white_and_demo')){
     window.lampa_settings.white_use    = false
 }
 
-window.Lampa = {
-    Listener: Subscribe(),
-    Lang,
-    Subscribe,
-    Storage,
-    Platform,
-    Utils,
-    Params,
-    Menu,
-    Head,
-    Notice,
-    NoticeClass,
-    NoticeClassLampa,
-    Background,
-    Favorite,
-    Select,
-    Controller,
-    Activity,
-    Keypad,
-    Template,
-    Component,
-    Reguest,
-    Filter,
-    Files,
-    Explorer,
-    Scroll,
-    Empty,
-    Arrays,
-    Noty,
-    Player,
-    PlayerVideo,
-    PlayerInfo,
-    PlayerPanel,
-    PlayerIPTV,
-    PlayerPlaylist,
-    Timeline,
-    Modal,
-    Api,
-    Cloud,
-    Settings,
-    SettingsApi,
-    Android,
-    Card,
-    Info,
-    Account,
-    Socket,
-    Input,
-    Screensaver,
-    Recomends,
-    VideoQuality,
-    TimeTable,
-    Broadcast,
-    Helper,
-    InteractionMain,
-    InteractionCategory,
-    InteractionLine,
-    Status,
-    Plugins,
-    Extensions,
-    Tizen,
-    Layer,
-    Console,
-    Iframe,
-    Parser,
-    Manifest,
-    TMDB,
-    Base64,
-    Loading,
-    YouTube,
-    WebOSLauncher,
-    Event,
-    Search,
-    DeviceInput,
-    Worker: AppWorker,
-    DB,
-    NavigationBar,
-    Endless,
-    Color,
-    Cache,
-    Torrent,
-    Torserver,
-    Speedtest,
-    Processing,
-    ParentalControl
+if(window.lampa_settings.iptv){
+    window.lampa_settings.socket_use    = false
+    window.lampa_settings.plugins_store = false
+    window.lampa_settings.account_sync  = false
+    window.lampa_settings.torrents_use  = false
+}
+
+function initClass(){
+    window.Lampa = {
+        Listener: Subscribe(),
+        Lang,
+        Subscribe,
+        Storage,
+        Platform,
+        Utils,
+        Params,
+        Menu,
+        Head,
+        Notice,
+        NoticeClass,
+        NoticeClassLampa,
+        Background,
+        Favorite,
+        Select,
+        Controller,
+        Activity,
+        Keypad,
+        Template,
+        Component,
+        Reguest,
+        Filter,
+        Files,
+        Explorer,
+        Scroll,
+        Empty,
+        Arrays,
+        Noty,
+        Player,
+        PlayerVideo,
+        PlayerInfo,
+        PlayerPanel,
+        PlayerIPTV,
+        PlayerPlaylist,
+        Timeline,
+        Modal,
+        Api,
+        Cloud,
+        Settings,
+        SettingsApi,
+        Android,
+        Card,
+        Info,
+        Account,
+        Socket,
+        Input,
+        Screensaver,
+        Recomends,
+        VideoQuality,
+        TimeTable,
+        Broadcast,
+        Helper,
+        InteractionMain,
+        InteractionCategory,
+        InteractionLine,
+        Status,
+        Plugins,
+        Extensions,
+        Tizen,
+        Layer,
+        Console,
+        Iframe,
+        Parser,
+        Manifest,
+        TMDB,
+        Base64,
+        Loading,
+        YouTube,
+        WebOSLauncher,
+        Event,
+        Search,
+        DeviceInput,
+        Worker: AppWorker,
+        DB,
+        NavigationBar,
+        Endless,
+        Color,
+        Cache,
+        Torrent,
+        Torserver,
+        Speedtest,
+        Processing,
+        ParentalControl,
+        VPN,
+        Bell
+    }
 }
 
 function closeApp(){
@@ -225,6 +245,7 @@ function closeApp(){
     if(Platform.is('android')) Android.exit()
     if(Platform.is('orsay')) Orsay.exit()
     if(Platform.is('netcast')) window.NetCastBack()
+    if(Platform.is('noname')) window.history.back()
 }
 
 function popupCloseApp(){
@@ -250,7 +271,7 @@ function popupCloseApp(){
                     Modal.close()
 
                     Controller.toggle(controller)
-                    
+
                     closeApp()
                 }
             }
@@ -261,23 +282,41 @@ function popupCloseApp(){
 function prepareApp(){
     if(window.prepared_app) return
 
+    AppStatus.start()
+
     $('body').append(Noty.render())
 
     DeviceInput.init()
 
+    AppStatus.push('DeviceInput init')
+
     Platform.init()
+
+    AppStatus.push('Platform init')
 
     Params.init()
 
+    AppStatus.push('Params init')
+
     Controller.observe()
+
+    AppStatus.push('Controller observe init')
 
     Console.init()
 
+    AppStatus.push('Console init')
+
     Keypad.init()
+
+    AppStatus.push('Keypad init')
 
     Layer.init()
 
+    AppStatus.push('Layer init')
+
     Storage.init()
+
+    AppStatus.push('Storage init')
 
     /** Передаем фокус в контроллер */
 
@@ -286,12 +325,15 @@ function prepareApp(){
     })
 
     /** Выход в начальном скрине */
-    
+
     Keypad.listener.follow('keydown',(e)=>{
-        if(window.appready || Controller.enabled().name == 'modal') return
+        if(window.appready || Controller.enabled().name == 'modal' || (Platform.is('browser') || Platform.desktop())) return
 
         if (e.code == 8 || e.code == 27 || e.code == 461 || e.code == 10009 || e.code == 88) popupCloseApp()
     })
+
+    /** Отключаем правый клик */
+    if(window.innerWidth > 1280) window.addEventListener("contextmenu", e => e.preventDefault())
 
     /** Если это тач дивайс */
 
@@ -300,12 +342,12 @@ function prepareApp(){
     /** Start - для orsay одни стили, для других другие */
     let old_css = $('link[href="css/app.css"]')
 
-    if(Platform.is('orsay')){      
+    if(Platform.is('orsay')){
         let urlStyle = 'http://lampa.mx/css/app.css?v'
         //Для нового типа виджета берем сохраненный адрес загрузки
         if (Orsay.isNewWidget()) {
-            //Для фрейм загрузчика запишем полный url 
-            if (location.protocol != 'file:') {               
+            //Для фрейм загрузчика запишем полный url
+            if (location.protocol != 'file:') {
                 let newloaderUrl = location.href.replace(/[^/]*$/, '')
                 if (newloaderUrl.slice(-1) == '/') {
                     newloaderUrl = newloaderUrl.substring(0, newloaderUrl.length - 1);
@@ -327,11 +369,17 @@ function prepareApp(){
         Utils.putStyle([
             'https://yumata.github.io/lampa/css/app.css?v' + Manifest.css_version
         ],()=>{
+            AppStatus.push('PutStyle ' + Manifest.css_version)
+
             old_css.remove()
+        },()=>{
+            AppStatus.critical('PutStyle https://yumata.github.io/lampa/css/app.css')
         })
     }
 
     Layer.update()
+
+    AppStatus.push('Prepare ready')
 
     window.prepared_app = true
 }
@@ -378,7 +426,7 @@ function developerApp(proceed){
     $('.welcome').on('click', (e)=>{
         if(expect && DeviceInput.canClick(e.originalEvent)) check()
     })
-    
+
     window.addEventListener("keydown", keydown)
 }
 
@@ -389,16 +437,20 @@ function startApp(){
 
     /** Стартуем */
 
+    AppStatus.push('Launching the application')
+
     Lampa.Listener.send('app',{type:'start'})
 
     /** Инициализируем классы */
 
+    Personal.init()
     Settings.init()
     Select.init()
     Favorite.init()
     Background.init()
     Head.init()
     Notice.init()
+    Bell.init()
     Menu.init()
     Activity.init()
     Screensaver.init()
@@ -424,13 +476,15 @@ function startApp(){
     Processing.init()
     ParentalControl.init()
 
+    AppStatus.push('Initialization successful')
+
     /** Надо зачиcтить, не хорошо светить пароль ;) */
 
     Storage.set('account_password','')
 
     /** Чтоб не писали по 100 раз */
-    
-    Storage.set('parser_torrent_type','jackett')
+
+    Storage.set('parser_torrent_type', Storage.get('parser_torrent_type') || 'jackett')
 
     /** Инфа */
 
@@ -445,13 +499,15 @@ function startApp(){
     console.log('App','is touch:', Utils.isTouchDevice())
     console.log('App','is PWA:', Utils.isPWA())
     console.log('App','platform:', Storage.get('platform', 'noname'))
-    
+
     /** Выход из приложения */
 
     Activity.listener.follow('backward',(event)=>{
         if(!start_time) start_time = Date.now()
-        
-        if(event.count == 1 && Date.now() > start_time + (1000 * 2)){
+
+        let noout = Platform.is('browser') || Platform.desktop()
+
+        if(event.count == 1 && Date.now() > start_time + (1000 * 2) && !noout){
             let enabled = Controller.enabled()
 
             Select.show({
@@ -484,14 +540,25 @@ function startApp(){
         }
     })
 
+    ParentalControl.add('bookmarks',{
+        title: 'settings_input_links'
+    })
 
     /** Ренедрим лампу */
 
     Render.app()
 
+    AppStatus.push('Render app')
+
     /** Проверяем уведомления */
 
     Notice.drawCount()
+
+    AppStatus.push('Notice ready')
+
+    /** Временно вырезаем все для iptv, чтоб пройти модерацию */
+
+    window.lampa_settings.iptv && Iptv.init()
 
     /** Обновляем слои */
 
@@ -501,12 +568,18 @@ function startApp(){
 
     setTimeout(Activity.last.bind(Activity),500)
 
+    AppStatus.push('Run Activity')
+
     /** Гасим свет :D */
 
     setTimeout(()=>{
+        AppStatus.push('Hide logo')
+
         Keypad.enable()
 
         Screensaver.enable()
+
+        AppStatus.destroy()
 
         $('.welcome').fadeOut(500,()=>{
             $(this).remove()
@@ -553,7 +626,7 @@ function startApp(){
 
         if(e.name == 'keyboard_type'){
             $('body').toggleClass('system--keyboard',Storage.field('keyboard_type') == 'lampa' ? false : true)
-        } 
+        }
     })
 
     /** End */
@@ -609,9 +682,25 @@ function startApp(){
         }
 
         if(e.name == 'server'){
-            check(Storage.field('torrserver_use_link') == 'one' ? 'torrserver_url' : 'torrserver_url_two')
+            let name = Storage.field('torrserver_use_link') == 'one' ? 'torrserver_url' : 'torrserver_url_two'
+
+            check(name)
+
+            if(!Account.hasPremium() && Lang.selected(['ru','be','uk']) && !Personal.confirm()){
+                let ad = $(`
+                    <div class="ad-server">
+                        <div class="ad-server__text">
+                            Арендовать ссылку на сервер без установки и настроек.
+                        </div>
+                        <img src="https://i.ibb.co/6YsXH0H/qr-code-4-1.png" class="ad-server__qr">
+                        <div class="ad-server__label">Реклама - https://tsarea.tv</div>
+                    </div>
+                `)
+
+                $('[data-name="torrserver_use_link"]',e.body).after(ad)
+            }
         }
-        else torrent_net.clear()
+        else torrent_net.clear() 
 
         if(e.name == 'interface' && window.lampa_settings.lang_use){
             $('.settings-param:eq(0)',e.body).on('hover:enter',()=>{
@@ -634,7 +723,28 @@ function startApp(){
                 })
             }).find('.settings-param__value').text(Lang.translate(Lang.codes()[Storage.get('language','ru')]))
         }
+
+        if(e.name == 'main' && Platform.is('apple_tv')){
+            let append = e.body.find('.appletv-setting')
+           
+            if(!append.length){
+                append = $(`<div class="settings-folder selector appletv-setting">
+                    <div class="settings-folder__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" x="0" y="0" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512" xml:space="preserve"><path d="M407 0H105C47.103 0 0 47.103 0 105v302c0 57.897 47.103 105 105 105h302c57.897 0 105-47.103 105-105V105C512 47.103 464.897 0 407 0zM163.393 193.211c9.844-12.975 23.53-13.038 23.53-13.038s2.035 12.199-7.744 23.95c-10.442 12.548-22.312 10.494-22.312 10.494s-2.228-9.868 6.526-21.406zm21.581 136.569c-8.754 0-15.559-5.899-24.783-5.899-9.399 0-18.727 6.119-24.801 6.119C117.987 330 96 292.326 96 262.043c0-29.795 18.611-45.425 36.066-45.425 11.348 0 20.154 6.544 26.053 6.544 5.065 0 14.464-6.961 26.698-6.961 21.06 0 29.344 14.985 29.344 14.985s-16.204 8.284-16.204 28.386c0 22.677 20.185 30.492 20.185 30.492s-14.109 39.716-33.168 39.716zM296.2 327.4c-5.2 1.6-10.668 2.4-16.4 2.4-17.8 0-27.2-9.8-27.2-25.8v-60.2h-13.8v-20.6h13.8v-34h26.8v34h22v20.6h-22V295c0 7.25 4.1 10.2 10 10.2 5.6 0 13-3.131 14.6-3.8l5.4 21.2c-3.6 1.6-8 3.2-13.2 4.8zm84.398.6h-29l-38.6-104.8h27.6l26.6 83 26.8-83h25.2l-38.6 104.8z" fill="#fff"></path></svg>
+                    </div>
+                    <div class="settings-folder__name">${Lang.translate('menu_settings')}</div>
+                </div>`)
+
+                e.body.find('.scroll__body > div').append(append)
+            }
+
+            append.unbind('hover:enter').on('hover:enter',()=>{
+                window.open('lampa://showadvancedmenu')
+            })
+        }
     })
+
+    AppStatus.push('Subscriptions are successful')
 
     /** End */
 
@@ -654,15 +764,21 @@ function startApp(){
         return window.location.protocol == 'file:' ? 'https://yumata.github.io/lampa/vender/' + lib : './vender/' + lib
     })
 
+    AppStatus.push('Connecting libraries')
+
     Utils.putScript(video_libs,()=>{})
 
     /** Сообщаем о готовности */
 
     Lampa.Listener.send('app',{type:'ready'})
 
+    AppStatus.push('Send app ready')
+
     /** Меню готово */
 
     Menu.ready()
+
+    AppStatus.push('Menu ready')
 
     /** Лампа полностью готова */
 
@@ -677,7 +793,7 @@ function startApp(){
         if(e.code == 37 && psdg < 0){
             psdg = 0
         }
-        
+
         if(psdg >= 0 && mask[psdg] == e.code) psdg++
         else psdg = -1
 
@@ -701,7 +817,7 @@ function startApp(){
         if(e.code == 37 && psdg_full < 0){
             psdg_full = 0
         }
-        
+
         if(psdg_full >= 0 && mask_full[psdg_full] == e.code) psdg_full++
         else psdg_full = -1
 
@@ -724,7 +840,7 @@ function startApp(){
                         name: Lang.translate('settings_param_no'),
                         onSelect: ()=>{
                             Modal.close()
-        
+
                             Controller.toggle(controller)
                         }
                     },
@@ -752,7 +868,7 @@ function startApp(){
         if(!Player.opened()){
             if(color_keys[e.code]){
                 let type = color_keys[e.code]
-                
+
                 Activity.push({
                     url: '',
                     title: type == 'book' ? Lang.translate('title_book') : type == 'like' ? Lang.translate('title_like'): type == 'history' ? Lang.translate('title_history') : Lang.translate('title_wath'),
@@ -765,7 +881,7 @@ function startApp(){
     })
 
     /** Обновление состояния карточек каждые 5 минут */
-    
+
     let last_card_update = Date.now()
     let lets_card_update = ()=>{
         if(last_card_update < Date.now() - 1000 * 60 * 5){
@@ -780,7 +896,7 @@ function startApp(){
             })
         }
     }
-    
+
     setInterval(()=>{
         if(!Player.opened()) lets_card_update()
     },1000 * 60)
@@ -798,25 +914,51 @@ function startApp(){
             })
         }
     })
-    
+
+    if(Platform.is('android') || Platform.is('browser') || Platform.is('apple_tv') || Platform.desktop()){
+        Sound.add('hover',{
+            url: 'https://yumata.github.io/lampa/sound/hover.ogg'
+        })
+
+        Sound.add('enter',{
+            url: 'https://yumata.github.io/lampa/sound/hover.ogg',
+        })
+
+        Sound.add('bell',{
+            url: 'https://yumata.github.io/lampa/sound/bell.ogg',
+        })
+    }
+
+    AppStatus.push('The application is fully loaded')
+
+    if(window.youtube_lazy_load) Utils.putScript([Utils.protocol() + 'youtube.com/iframe_api'],()=>{})
+
+    Utils.putScript([Utils.protocol() + Manifest.cub_domain + '/plugin/christmas'],()=>{})
+
+    //Utils.putScript(['./plugins/christmas.js'],()=>{})
+
     /** End */
 }
 
 function loadLang(){
     let code = window.localStorage.getItem('language') || 'ru'
     let call = ()=>{
+        AppStatus.push('Loading language completed')
+
         /** Принудительно стартовать */
         setTimeout(startApp,1000*5)
 
         /** Загружаем плагины и стартуем лампу */
         Plugins.load(startApp)
     }
-    
+
 
     if(['ru','en'].indexOf(code) >= 0) call()
     else{
+        AppStatus.push('Loading language')
+
         $.ajax({
-            url: (location.protocol == 'file:' ? 'https://yumata.github.io/lampa/' : './') + 'lang/' + code + '.js',
+            url: (location.protocol == 'file:' || Platform.is('nw') ? 'https://yumata.github.io/lampa/' : './') + 'lang/' + code + '.js',
             dataType: 'text',
             timeout: 10000,
             success: (data)=>{
@@ -828,7 +970,7 @@ function loadLang(){
                 catch(e){}
 
                 Lang.AddTranslation(code, translate)
-                
+
                 call()
             },
             error: call
@@ -839,7 +981,7 @@ function loadLang(){
 function loadApp(){
     prepareApp()
 
-    
+
     if(window.localStorage.getItem('language') || !window.lampa_settings.lang_use){
         developerApp(loadLang)
     }
@@ -857,14 +999,20 @@ function loadApp(){
     }
 }
 
-if(navigator.userAgent.toLowerCase().indexOf('crosswalk') > -1){
-    function checkReady(){
-        if(window.innerWidth > 0) loadApp()
-        else{
-            setTimeout(checkReady,100)
-        }
-    }
+if(!window.fitst_load){
+    window.fitst_load = true
 
-    checkReady()
+    initClass()
+    
+    if(navigator.userAgent.toLowerCase().indexOf('lampa_client') > -1){
+        function checkReady(){
+            if(window.innerWidth > 0) loadApp()
+            else{
+                setTimeout(checkReady,100)
+            }
+        }
+
+        checkReady()
+    }
+    else loadApp()
 }
-else loadApp()

@@ -105,6 +105,12 @@
         text-align: right;
     }
 
+    &__title{
+        text-align: center;
+        padding: 1em;
+        font-size: 1.3em;
+    }
+
     &__name{
         display: flex;
         align-items: center;
@@ -452,6 +458,18 @@
 
     + .iptv-channel{
         margin-top: 1em;
+    }
+
+    &--main{
+        width: 12.75em;
+        padding-bottom: 0;
+        height: 9em;
+        flex-shrink: 0;
+
+        + .iptv-channel{
+            margin-top: 0;
+            margin-left: 1em;
+        }
     }
 }
 
